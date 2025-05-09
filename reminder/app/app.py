@@ -3,8 +3,8 @@ import json
 import os
 import logging
 
-from nacl.signing import VerifyKey
-from nacl.exceptions import BadSignatureError
+from discord_interactions import verify_key, InteractionType, InteractionResponseType
+
 
 # import requests
 
@@ -16,17 +16,15 @@ level = logging.getLevelName(LOG_LEVEL)
 logger.setLevel(level)
 
 def verify_request(event):
-    signature = event["headers"]["x-signature-ed25519"]
-    timestamp = event["headers"]["x-signature-timestamp"]
+    headers = event.get("headers", {})
+    signature = headers.get("x-signature-ed25519")
+    timestamp = headers.get("x-signature-timestamp")
 
-    vk = VerifyKey(bytes.fromhex(PUBLIC_KEY))
-    msg = timestamp + event["body"]
+    raw_body = event.get("body") or "{}"
 
-    try:
-        vk.verify(msg.encode(), signature=bytes.fromhex(signature))
-    except BadSignatureError:
+    if signature is None or timestamp is None:
         return False
-    return True
+    return verify_key(raw_body.encode(), signature, timestamp, PUBLIC_KEY)
 
 def make_response(code, body):
     return {
@@ -35,33 +33,35 @@ def make_response(code, body):
         "body": body
     }
 
-def discord_handler(body):
-    command = body["data"]["name"]
-
-    if command == "hello":
-        pass
+def discord_handler(name, data):
+    if name == "hello":
+        return "HELLO WORLD"
     else:
-        ValueError("f{command} is not supported.")
+        ValueError("f{name} is not supported.")
 
 def lambda_handler(event, context):
+    logger.info("handler arguments")
+    logger.info(event)
+    logger.info(context)
+
     if not verify_request(event):
+        logger.info("invalid request signature")
         return make_response(401, "invalid request signature")
 
     try:
-        body = json.loads(event["body"])
-        t = body["type"]
+        body = json.loads(event.get("body", "{}"))
+        interaction_type = body.get("type")
 
-        if t == 1:
-            # handle ping
-            return make_response(200, json.dumps({"type": 1}))
-        elif t == 2:
-            msg = discord_handler(body)
+        if interaction_type in [InteractionType.APPLICATION_COMMAND, InteractionType.MESSAGE_COMPONENT]:
+            data = body.get("data", {})
+            cname = data.get("name")
 
-            if msg is not None:
-                return make_response(200, json.dumps(msg))
-            else:
-                logger.error("failed to make response")
-                return make_response(400, "invalid request type.")
+            res_text = discord_handler(cname, data)
+            res = { "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE, "data": { "content": res_text }}
+        else:
+            res = { "type": InteractionResponseType.PONG }
+
+        return make_response(200, json.dumps(res))
     except Exception as e:
         logger.error(e)
         return make_response(400, "invalid request type.")
