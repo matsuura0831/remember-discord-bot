@@ -3,53 +3,65 @@ import json
 import os
 import logging
 
+from nacl.signing import VerifyKey
+from nacl.exceptions import BadSignatureError
+
 # import requests
 
 LOG_LEVEL = os.environ.get("LOG_LEVEL")
+PUBLIC_KEY = os.environ.get("DISCORD_PUBLIC_KEY")
 
 logger = logging.getLogger()
 level = logging.getLevelName(LOG_LEVEL)
 logger.setLevel(level)
 
-def lambda_handler(event, context):
-    """Sample pure Lambda function
+def verify_request(event):
+    signature = event["headers"]["x-signature-ed25519"]
+    timestamp = event["headers"]["x-signature-timestamp"]
 
-    Parameters
-    ----------
-    event: dict, required
-        API Gateway Lambda Proxy Input Format
+    vk = VerifyKey(bytes.fromhex(PUBLIC_KEY))
+    msg = timestamp + event["body"]
 
-        Event doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html#api-gateway-simple-proxy-for-lambda-input-format
+    try:
+        vk.verify(msg.encode(), signature=bytes.fromhex(signature))
+    except BadSignatureError:
+        return False
+    return True
 
-    context: object, required
-        Lambda Context runtime methods and attributes
-
-        Context doc: https://docs.aws.amazon.com/lambda/latest/dg/python-context-object.html
-
-    Returns
-    ------
-    API Gateway Lambda Proxy Output Format: dict
-
-        Return doc: https://docs.aws.amazon.com/apigateway/latest/developerguide/set-up-lambda-proxy-integrations.html
-    """
-
-    # try:
-    #     ip = requests.get("http://checkip.amazonaws.com/")
-    # except requests.RequestException as e:
-    #     # Send some context about this error to Lambda Logs
-    #     print(e)
-
-    #     raise e
-
-    logger.debug("DEBUG LOG")
-    logger.info("INFO LOG")
-    logger.warning("WARNING LOG")
-    logger.error("ERROR LOG")
-
+def make_response(code, body):
     return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "message": "hello world",
-            # "location": ip.text.replace("\n", "")
-        }),
+        "statusCode": code,
+        "headers": { "Content-Type": "application/json" },
+        "body": body
     }
+
+def discord_handler(body):
+    command = body["data"]["name"]
+
+    if command == "hello":
+        pass
+    else:
+        ValueError("f{command} is not supported.")
+
+def lambda_handler(event, context):
+    if not verify_request(event):
+        return make_response(401, "invalid request signature")
+
+    try:
+        body = json.loads(event["body"])
+        t = body["type"]
+
+        if t == 1:
+            # handle ping
+            return make_response(200, json.dumps({"type": 1}))
+        elif t == 2:
+            msg = discord_handler(body)
+
+            if msg is not None:
+                return make_response(200, json.dumps(msg))
+            else:
+                logger.error("failed to make response")
+                return make_response(400, "invalid request type.")
+    except Exception as e:
+        logger.error(e)
+        return make_response(400, "invalid request type.")

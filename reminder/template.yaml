@@ -9,6 +9,8 @@ Parameters:
   LogLevel:
     Type: String
     Default: DEBUG
+  DiscordPublicKey:
+    Type: String
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -38,6 +40,7 @@ Resources:
       Environment:
         Variables:
           LOG_LEVEL: !Ref LogLevel
+          DISCORD_PUBLIC_KEY: !Ref DiscordPublicKey
 
   ReminderLogGroup:
     Type: AWS::Logs::LogGroup
