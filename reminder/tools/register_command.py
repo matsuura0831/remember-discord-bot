@@ -8,9 +8,6 @@ load_dotenv(".env")
 DISCORD_APPLICATION_ID = os.getenv("APPLICATION_ID")
 DISCORD_TOKEN = os.getenv("TOKEN")
 
-print(DISCORD_APPLICATION_ID)
-print(DISCORD_TOKEN)
-
 def main():
     res = requests.post(
         url = f"https://discord.com/api/v10/applications/{DISCORD_APPLICATION_ID}/commands",
