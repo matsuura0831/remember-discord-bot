@@ -71,6 +71,34 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${ReminderFunction}
       RetentionInDays: 7
 
+  FollowUpRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: "manage-scheduler-for-followup-function"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "scheduler:ListSchedules"
+                  - "scheduler:CreateSchedule"
+                  - "scheduler:DeleteSchedule"
+                Resource: "*"
+              - Effect: "Allow"
+                Action:
+                  - "iam:PassRole"
+                Resource: !GetAtt EventBridgeRole.Arn
   FollowUpFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -83,11 +111,57 @@ Resources:
         Variables:
           DISCORD_APP_ID: !Ref DiscordAppId
           DISCORD_TOKEN: !Ref DiscordToken
+          SCHEDULER_GROUP: !Ref EventBridgeGroup
+          SCHEDULER_ROLE: !GetAtt EventBridgeRole.Arn
+          LAMBDA_MESSAGE: !GetAtt MessagePostFunction.Arn
+      Role: !GetAtt FollowUpRole.Arn
   FollowUpLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/lambda/${FollowUpFunction}
       RetentionInDays: 7
+
+  MessagePostFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: app/
+      Handler: message.lambda_handler
+      Runtime: python3.12
+      Architectures:
+      - x86_64
+      Environment:
+        Variables:
+          DISCORD_TOKEN: !Ref DiscordToken
+  MessagePostLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${MessagePostFunction}
+      RetentionInDays: 7
+
+  EventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: scheduler.amazonaws.com
+      Policies:
+        - PolicyName: "for-eventbridge-scheduler"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "lambda:InvokeFunction"
+                Resource: !GetAtt MessagePostFunction.Arn
+
+  EventBridgeGroup:
+    Type: AWS::Scheduler::ScheduleGroup
+    Properties:
+      Name: "roo-discord"
 
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group

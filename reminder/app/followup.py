@@ -3,8 +3,7 @@ import os
 import logging
 import requests
 
-import boto3
-from discord_interactions import verify_key, InteractionType, InteractionResponseType
+import commands
 
 DISCORD_APP_ID = os.environ.get("DISCORD_APP_ID")
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
@@ -21,18 +20,27 @@ def make_response(code, body):
 def lambda_handler(event, context):
     logger.info(event)
     logger.info(context)
-    
-    import time
-    time.sleep(10)
 
-    data = event.get("data", {})
     interaction_token = event.get("token", "")
     url = f"https://discord.com/api/v10/webhooks/{DISCORD_APP_ID}/{interaction_token}"
 
-    res = requests.post(
+    try:
+        data = event.get("data", {})
+        cmd = data.get("name")
+
+        if commands.is_long(cmd):
+            # コマンドを実行できるなら実行する
+            msg = commands.call_long(cmd, event)
+            payload = { "content": msg }
+        else:
+            raise ValueError(f"Illegal command: {cmd}.")
+    except Exception as e:
+        logger.error(e)
+        payload = { "content": f"コマンド実行に失敗しました: {e}" }
+
+    response = requests.post(
         url,
-        data = json.dumps({"content": "Hello"}),
-        headers = { "Content-Type": "application/json" },
+        json = payload,
     )
 
-    return make_response(res.status_code, res.text)
+    return make_response(response.status_code, response.text)

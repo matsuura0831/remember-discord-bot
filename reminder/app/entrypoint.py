@@ -6,6 +6,8 @@ import requests
 import boto3
 from discord_interactions import verify_key, InteractionType, InteractionResponseType
 
+import commands
+
 DISCORD_PUBLIC_KEY = os.environ.get("DISCORD_PUBLIC_KEY")
 LAMBDA_FOLLOWUP_FUNCTION = os.environ.get("LAMBDA_FOLLOWUP_FUNCTION")
 
@@ -42,23 +44,38 @@ def lambda_handler(event, context):
         interaction_type = body.get("type")
 
         if interaction_type in [InteractionType.APPLICATION_COMMAND, InteractionType.MESSAGE_COMPONENT]:
-            id = body.get("id")
-            interaction_token = body.get("token")
+            data = body.get("data")
+            cmd = data.get("name")
 
-            url = f"https://discord.com/api/v10/interactions/{id}/{interaction_token}/callback"
-            requests.post(
-                url,
-                json = { "type": InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE },
-            )
+            if commands.is_short(cmd):
+                # コマンドを実行できるなら実行する
+                msg = commands.call_short(cmd, body)
+                res = {
+                    "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+                    "data": {
+                        "content": msg
+                    }
+                }
+            elif commands.is_long(cmd):
+                # 返事に時間がかかる場合は別途lambdaを起動して実行する
+                id = body.get("id")
+                interaction_token = body.get("token")
 
-            client = boto3.client("lambda")
-            client.invoke(
-                FunctionName = LAMBDA_FOLLOWUP_FUNCTION,
-                InvocationType = "Event",
-                Payload = json.dumps(body)
-            )
+                url = f"https://discord.com/api/v10/interactions/{id}/{interaction_token}/callback"
+                requests.post(
+                    url,
+                    json = { "type": InteractionResponseType.DEFERRED_CHANNEL_MESSAGE_WITH_SOURCE },
+                )
 
-            res = {}
+                client = boto3.client("lambda")
+                client.invoke(
+                    FunctionName = LAMBDA_FOLLOWUP_FUNCTION,
+                    InvocationType = "Event",
+                    Payload = json.dumps(body)
+                )
+                res = {}
+            else:
+                raise ValueError(f"Illegal command: {cmd}.")
         else:
             res = { "type": InteractionResponseType.PONG }
 
