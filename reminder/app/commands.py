@@ -23,7 +23,7 @@ def dice(interaction, max, num=1):
     return f"{num}D{max} = {d}"
 
 @long_command
-def remind(interaction, description, channel=None, title="", emoji="", at=None, cron=None, timezone="Asia/Tokyo"):
+def remind(interaction, description, channel=None, title="", emoji="", rnd_emoji="", at=None, cron=None, timezone="Asia/Tokyo"):
     schedule_prefix = "remind"
     client = boto3.client("scheduler")
 
@@ -59,6 +59,9 @@ def remind(interaction, description, channel=None, title="", emoji="", at=None, 
         "description": description,
         "emoji": emoji.split(","),
     }
+
+    if rnd_emoji != "":
+        payload["rnd_emoji"] = rnd_emoji
 
     p = {
         "Name": schedule_name,

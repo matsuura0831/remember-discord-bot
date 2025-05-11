@@ -1,10 +1,9 @@
 import json
 import os
 import logging
+import random
 import requests
 import urllib.parse
-
-import commands
 
 DISCORD_TOKEN = os.environ.get("DISCORD_TOKEN")
 
@@ -25,6 +24,7 @@ def lambda_handler(event, context):
     title = event.get("title", "")
     description = event.get("description")
     emoji = event.get("emoji", [])
+    rnd_emoji = event.get("rnd_emoji", None)
 
     headers = {
         "Content-Type": "application/json",
@@ -43,15 +43,23 @@ def lambda_handler(event, context):
     response = requests.post( url, headers = headers, json = payload)
     logger.info(f"code: {response.status_code}, text: {response.text}")
 
-    if response.status_code == 200 and emoji:
+    if response.status_code == 200:
         data = json.loads(response.text)
         msg_id = data.get("id")
-        logger.info(msg_id)
 
-        for e in emoji:
-            emoji_id = urllib.parse.quote(e)
+        if emoji:
+            for e in emoji:
+                emoji_id = urllib.parse.quote(e)
+                url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}/reactions/{emoji_id}/@me"
+                requests.put(url, headers = headers)
+
+        if rnd_emoji is not None:
+            e = rnd_emoji.split(",")
+            payload["rnd_emoji"] = random.choice(e)
+
+            emoji_id = urllib.parse.quote(rnd_emoji)
             url = f"https://discord.com/api/v10/channels/{channel_id}/messages/{msg_id}/reactions/{emoji_id}/@me"
-            logger.info(f"reaction {e}: {url}")
             requests.put(url, headers = headers)
+
 
     return make_response(response.status_code, response.text)

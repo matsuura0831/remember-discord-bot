@@ -50,6 +50,10 @@ def main():
                 "description": "リアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
                 "type": 3, # STRING
             }, {
+                "name": "rnd_emoji",
+                "description": "ランダム選択するリアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
+                "type": 3, # STRING
+            }, {
                 "name": "at",
                 "description": "リマインダを1回限り投稿する場合に指定。Format: (<yyyy-mm-dd>T<hh:mm:ss>)。atかcronのどちらかは入力が必須です",
                 "type": 3, # STRING
