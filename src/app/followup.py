@@ -28,9 +28,19 @@ def lambda_handler(event, context):
         data = event.get("data", {})
         cmd = data.get("name")
 
+        if "options" in data:
+            # サブコマンドの場合はアンダーバーで連結したものを対象にする
+            sub = data.get("options")[0]
+
+            if "name" in sub:
+                sub_cmd = sub.get("name")
+
+                cmd = f"{cmd}_{sub_cmd}"
+                data = sub
+
         if commands.is_long(cmd):
             # コマンドを実行できるなら実行する
-            msg = commands.call_long(cmd, event)
+            msg = commands.call_long(cmd, event, data)
             payload = { "content": msg }
         else:
             raise ValueError(f"Illegal command: {cmd}.")

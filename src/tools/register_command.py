@@ -5,8 +5,8 @@ import requests
 from dotenv import load_dotenv
 load_dotenv(".env")
 
-DISCORD_APPLICATION_ID = os.getenv("APPLICATION_ID")
-DISCORD_TOKEN = os.getenv("TOKEN")
+DISCORD_APPLICATION_ID = os.getenv("DISCORD_APPLICATION_ID")
+DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 
 def main():
     commands = [{
@@ -33,39 +33,76 @@ def main():
         "description": "リマインダーを指定時刻に送ります",
         "options": [
             {
-                "name": "description",
-                "description": "リマインダ内容",
-                "type": 3, # STRING
-                "required": True,
-            }, {
-                "name": "channel",
-                "description": "投稿先のチャンネルID。指定されなかった場合は登録元チャンネルIDを利用します",
-                "type": 3, # STRING
-            }, {
-                "name": "title",
-                "description": "リマインダタイトル",
-                "type": 3, # STRING
-            }, {
-                "name": "emoji",
-                "description": "リアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
-                "type": 3, # STRING
-            }, {
-                "name": "rnd_emoji",
-                "description": "ランダム選択するリアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
-                "type": 3, # STRING
-            }, {
-                "name": "at",
-                "description": "リマインダを1回限り投稿する場合に指定。Format: (<yyyy-mm-dd>T<hh:mm:ss>)。atかcronのどちらかは入力が必須です",
-                "type": 3, # STRING
-            }, {
-                "name": "cron",
-                "description": "リマインダを定期投稿する場合に指定。Format: (<minutes> <hours> <day> <month> <week> <year>)。atかcronのどちらかは入力が必須です",
-                "type": 3, # STRING
-            }, {
-                "name": "timezone",
-                "description": "リマインダのタイムゾーンを指定。指定されなかった場合は Asia/Tokyo を利用します",
-                "type": 3, # STRING
-            }
+                "name": "migrate",
+                "description": "前バージョン登録情報からのマイグレーションを行います。",
+                "type": 1, # SUB_COMMAND,
+            },
+            {
+                "name": "add",
+                "description": "通知設定を追加します",
+                "type": 1, # SUB_COMMAND,
+                "options": [{
+                    "name": "description",
+                    "description": "リマインダ内容",
+                    "type": 3, # STRING
+                    "required": True,
+                }, {
+                    "name": "channel",
+                    "description": "投稿先のチャンネルID。指定されなかった場合は登録元チャンネルIDを利用します",
+                    "type": 3, # STRING
+                }, {
+                    "name": "title",
+                    "description": "リマインダタイトル",
+                    "type": 3, # STRING
+                }, {
+                    "name": "emoji",
+                    "description": "リアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
+                    "type": 3, # STRING
+                }, {
+                    "name": "rnd_emoji",
+                    "description": "ランダム選択するリアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
+                    "type": 3, # STRING
+                }, {
+                    "name": "at",
+                    "description": "リマインダを1回限り投稿する場合に指定。Format: (<yyyy-mm-dd>T<hh:mm:ss>)。atかcronのどちらかは入力が必須です",
+                    "type": 3, # STRING
+                }, {
+                    "name": "cron",
+                    "description": "リマインダを定期投稿する場合に指定。Format: (<minutes> <hours> <day> <month> <week> <year>)。atかcronのどちらかは入力が必須です",
+                    "type": 3, # STRING
+                }, {
+                    "name": "timezone",
+                    "description": "リマインダのタイムゾーンを指定。指定されなかった場合は Asia/Tokyo を利用します",
+                    "type": 3, # STRING
+                }]
+            },
+            {
+                "name": "del",
+                "description": "通知設定を削除します",
+                "type": 1, # SUB_COMMAND,
+                "options": [{
+                    "name": "name",
+                    "description": "通知名",
+                    "type": 3, # STRING
+                    "required": True,
+                }]
+            },
+            {
+                "name": "show",
+                "description": "通知設定の詳細を表示します",
+                "type": 1, # SUB_COMMAND,
+                "options": [{
+                    "name": "name",
+                    "description": "通知名",
+                    "type": 3, # STRING
+                    "required": True,
+                }]
+            },
+            {
+                "name": "ls",
+                "description": "通知設定の一覧を表示します",
+                "type": 1, # SUB_COMMAND,
+            },
         ]
     }]
 

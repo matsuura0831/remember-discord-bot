@@ -46,10 +46,20 @@ def lambda_handler(event, context):
         if interaction_type in [InteractionType.APPLICATION_COMMAND, InteractionType.MESSAGE_COMPONENT]:
             data = body.get("data")
             cmd = data.get("name")
+            
+            if "options" in data:
+                # サブコマンドの場合はアンダーバーで連結したものを対象にする
+                sub = data.get("options")[0]
+
+                if "name" in sub:
+                    sub_cmd = sub.get("name")
+
+                    cmd = f"{cmd}_{sub_cmd}"
+                    data = sub
 
             if commands.is_short(cmd):
                 # コマンドを実行できるなら実行する
-                msg = commands.call_short(cmd, body)
+                msg = commands.call_short(cmd, body, data)
                 res = {
                     "type": InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
                     "data": {
