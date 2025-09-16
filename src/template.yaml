@@ -95,6 +95,7 @@ Resources:
                   - "scheduler:CreateSchedule"
                   - "scheduler:DeleteSchedule"
                   - "scheduler:GetSchedule"
+                  - "scheduler:UpdateSchedule"
                 Resource: "*"
               - Effect: "Allow"
                 Action:

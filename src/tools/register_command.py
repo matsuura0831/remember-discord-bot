@@ -103,6 +103,49 @@ def main():
                 "description": "通知設定の一覧を表示します",
                 "type": 1, # SUB_COMMAND,
             },
+            {
+                "name": "update",
+                "description": "通知設定を更新します",
+                "type": 1, # SUB_COMMAND,
+                "options": [{
+                    "name": "name",
+                    "description": "通知名",
+                    "type": 3, # STRING
+                    "required": True,
+                }, {
+                    "name": "description",
+                    "description": "リマインダ内容",
+                    "type": 3, # STRING
+                }, {
+                    "name": "channel",
+                    "description": "投稿先のチャンネルID。指定されなかった場合は登録元チャンネルIDを利用します",
+                    "type": 3, # STRING
+                }, {
+                    "name": "title",
+                    "description": "リマインダタイトル",
+                    "type": 3, # STRING
+                }, {
+                    "name": "emoji",
+                    "description": "リアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
+                    "type": 3, # STRING
+                }, {
+                    "name": "rnd_emoji",
+                    "description": "ランダム選択するリアクション文字列。複数を指定する場合はカンマ区切りで入力してください",
+                    "type": 3, # STRING
+                }, {
+                    "name": "at",
+                    "description": "リマインダを1回限り投稿する場合に指定。Format: (<yyyy-mm-dd>T<hh:mm:ss>)",
+                    "type": 3, # STRING
+                }, {
+                    "name": "cron",
+                    "description": "リマインダを定期投稿する場合に指定。Format: (<minutes> <hours> <day> <month> <week> <year>)",
+                    "type": 3, # STRING
+                }, {
+                    "name": "timezone",
+                    "description": "リマインダのタイムゾーンを指定。指定されなかった場合は Asia/Tokyo を利用します",
+                    "type": 3, # STRING
+                }]
+            },
         ]
     }]
 

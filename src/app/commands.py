@@ -23,6 +23,12 @@ CURRENT_SCHEDULE_GROUP_PREFIX = "v2"
 
 logger = logging.getLogger()
 
+@short_command
+def dice(interaction, max, num=1):
+    d = [str(random.randint(1, max)) for i in range(num)]
+    d = ",".join(d)
+    return f"{num}D{max} = {d}"
+
 @long_command
 def remind_migrate(interaction):
     channel = interaction.get("channel_id")
@@ -170,31 +176,15 @@ def remind_ls(interaction):
 
     return f"登録されている通知は以下の通りです\n{"\n".join(data)}"
 
-@short_command
-def dice(interaction, max, num=1):
-    d = [str(random.randint(1, max)) for i in range(num)]
-    d = ",".join(d)
-    return f"{num}D{max} = {d}"
-
 @long_command
 def remind_add(interaction, description, channel=None, title=None, emoji=None, rnd_emoji="", at=None, cron=None, timezone="Asia/Tokyo"):
-    schedule_prefix = "remind"
     client = boto3.client("scheduler")
 
-    # 現時点のスケジュール数をカウントして登録名を決定する
-    paginator = client.get_paginator("list_schedules")
-    res_itr = paginator.paginate(
-        GroupName = SCHEDULER_GROUP,
-        MaxResults = 100,
-        NamePrefix = schedule_prefix,
-    )
-
     logger.info(interaction)
-    logger.info(channel)
     if channel is None:
         # チャンネルIDが明に指定されていない場合は発言元のチャンネルにする
         channel = interaction.get("channel_id")
-        logger.info(channel)
+    logger.info(channel)
 
     t = datetime.datetime.now()
     t = t.astimezone(datetime.timezone(datetime.timedelta(hours=9))) # UTC to JST
@@ -230,7 +220,7 @@ def remind_add(interaction, description, channel=None, title=None, emoji=None, r
             "Arn": LAMBDA_MESSAGE,
             "RoleArn": SCHEDULER_ROLE,
             "Input": json.dumps(payload),
-        }
+        },
     }
     
     if cron is not None:
@@ -244,13 +234,74 @@ def remind_add(interaction, description, channel=None, title=None, emoji=None, r
     # return res["ScheduleArn"]
     return f"以下の名前で登録しました: {t}"
 
-
 @long_command
-def hello(interaction):
-    import time
-    time.sleep(5)
+def remind_update(interaction, name, description=None, channel=None, title=None, emoji=None, rnd_emoji="", at=None, cron=None, timezone="Asia/Tokyo"):
+    client = boto3.client("scheduler")
 
-    return "HELLO"
+    if channel is None:
+        # チャンネルIDが明に指定されていない場合は発言元のチャンネルにする
+        channel = interaction.get("channel_id")
+    logger.info(channel)
+    schedule_name = f"{CURRENT_SCHEDULE_GROUP_PREFIX}-{channel}-{name}"
+
+    data = []
+    try:
+        ret = client.get_schedule(
+            GroupName = SCHEDULER_GROUP,
+            Name = schedule_name,
+        )
+
+        payload = json.loads(ret["Target"]["Input"])
+
+        if description is not None:
+            # 特殊文字を修正する
+            for src, dst in [["\\n", "\n"], ["\\r", "\r"], ["\\t", "\t"]]:
+                description = description.replace(src, dst)
+            payload["description"] = description
+
+        payload["channel"] = channel
+        
+        if title is not None:
+            payload["title"] = title
+        
+        if emoji is not None:
+            payload["emoji"] = emoji.split(",")
+
+        if rnd_emoji != "":
+            payload["rnd_emoji"] = rnd_emoji
+
+        p = {
+            "Name": schedule_name,
+            "GroupName": SCHEDULER_GROUP,
+            "Target": {
+                "Arn": LAMBDA_MESSAGE,
+                "RoleArn": SCHEDULER_ROLE,
+                "Input": json.dumps(payload),
+            },
+            "FlexibleTimeWindow": { "Mode": "OFF" },
+        }
+
+        if cron is not None:
+            p["ScheduleExpression"] = f"cron({cron})"
+        elif at is not None:
+            p["ScheduleExpression"] = f"at({at})"
+        else:
+            p["ScheduleExpression"] = ret["ScheduleExpression"]
+
+        if timezone is not None:
+            p["ScheduleExpressionTimezone"] = timezone
+        else:
+            p["ScheduleExpressionTimezone"] = ret["ScheduleExpressionTimezone"]
+
+        res = client.update_schedule(**p)
+
+        msg = "更新を完了しました"
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceNotFoundException":
+            msg = "指定された通知名は存在しませんでした"
+        else:
+            raise e
+    return msg
 
 # Util funcitons ----------------------------------------
 
@@ -258,9 +309,11 @@ SHORT_COMMANDS = get_commands(__name__, short_command)
 LONG_COMMANDS = get_commands(__name__, long_command)
 
 def is_short(name):
+    logger.info(f"Short check: {name}, {name in SHORT_COMMANDS}")
     return name in SHORT_COMMANDS
 
 def is_long(name):
+    logger.info(f"Long check: {name}, {name in LONG_COMMANDS}")
     return name in LONG_COMMANDS
 
 def call_short(name, body, data):
@@ -269,6 +322,7 @@ def call_short(name, body, data):
     p = {o["name"]: o["value"] for o in options}
     p = {**p, "interaction": body }
 
+    logger.info(f"Short call: {name}, {p}")
     return SHORT_COMMANDS[name](**p)
 
 def call_long(name, body, data):
@@ -277,4 +331,5 @@ def call_long(name, body, data):
     p = {o["name"]: o["value"] for o in options}
     p = {**p, "interaction": body }
 
+    logger.info(f"Long call: {name}, {p}")
     return LONG_COMMANDS[name](**p)
